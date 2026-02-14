@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-multipart
+pydantic
+torch
+torchvision
+transformers
+sentence-transformers
+qdrant-client
+pymupdf
+langchain
