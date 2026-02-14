@@ -3,12 +3,13 @@ from bs4 import BeautifulSoup
 import json
 import time
 import random
+from typing import List, Dict, Any, Optional
 
 BASE_URL = "https://www.nhs.uk/conditions/"
 OUTPUT_FILE = "medical_data.json"
 TARGET_COUNT = 550 # Aim for >500
 
-def get_all_condition_links():
+def get_all_condition_links() -> List[Dict[str, str]]:
     print(f"Fetching A-Z Index from {BASE_URL}...")
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
     try:
@@ -24,17 +25,18 @@ def get_all_condition_links():
         links = []
         main_content = soup.find('main') or soup.find('div', class_='nhsuk-a-to-z-list') or soup
         
-        for a in main_content.find_all('a', href=True):
-            href = a['href']
-            # Filter for condition links (usually /conditions/slug/)
-            if "/conditions/" in href and href != "/conditions/":
-                # Ensure full URL
-                if not href.startswith("http"):
-                    href = "https://www.nhs.uk" + href
-                
-                name = a.get_text().strip()
-                if name:
-                    links.append({"url": href, "name": name})
+        if main_content:
+            for a in main_content.find_all('a', href=True):
+                href = a['href']
+                # Filter for condition links (usually /conditions/slug/)
+                if "/conditions/" in href and href != "/conditions/":
+                    # Ensure full URL
+                    if not href.startswith("http"):
+                        href = "https://www.nhs.uk" + href
+                    
+                    name = a.get_text().strip()
+                    if name:
+                        links.append({"url": href, "name": name})
                     
         # Remove duplicates
         unique_links = {v['url']:v for v in links}.values()
@@ -45,7 +47,7 @@ def get_all_condition_links():
         print(f"Error fetching index: {e}")
         return []
 
-def scrape_condition_page(url, name):
+def scrape_condition_page(url: str, name: str) -> Optional[Dict[str, Any]]:
     try:
         headers = {'User-Agent': 'Mozilla/5.0'}
         response = requests.get(url, headers=headers, timeout=5)
@@ -63,24 +65,25 @@ def scrape_condition_page(url, name):
         # Try to find specific summary text
         summary_section = main_content.find('section', class_='nhsuk-section') or main_content
         for p in summary_section.find_all('p'):
-            text = p.get_text().strip()
+            text: str = p.get_text().strip()
             if len(text) > 40:
                 explanation = text
                 # Extract more keywords from explanation
-                words = [w for w in text.lower().split() if len(w) > 4][:5]
-                keywords.extend(words)
+                all_words: List[str] = [w for w in text.lower().split() if len(w) > 4]
+                keywords.extend(all_words[0:5])
                 break
         
         # Naive keyword extraction cleanup
         keywords = list(set(keywords))
         
         # Generate generic but safe advice if specific sections aren't parseable
-        # (Mass scraping structure varies too much for rigid selectors)
+        short_explanation = explanation[:300] + "..." if len(explanation) > 300 else explanation
+        
         return {
             "condition": name,
             "keywords": keywords,
             "stage": "Clinical Presentation",
-            "explanation": explanation[:300] + "..." if len(explanation) > 300 else explanation,
+            "explanation": short_explanation,
             "treatment_guidance": "Please consult a healthcare professional for specific treatment advice relative to this condition.",
             "medications": ["Consult Doctor"],
             "dos": ["Monitor symptoms", "Keep a symptom diary"],
@@ -99,8 +102,8 @@ def build_dataset():
         print("No links found. Aborting.")
         return
 
-    final_data = []
-    count = 0
+    final_data: List[Dict[str, Any]] = []
+    count: int = 0
     
     print(f"Starting mass scrape. Target: {TARGET_COUNT}")
     
@@ -113,7 +116,7 @@ def build_dataset():
         data = scrape_condition_page(item['url'], item['name'])
         if data:
             final_data.append(data)
-            count += 1
+            count = count + 1
             if count % 10 == 0:
                 print(f"Scraped {count}/{TARGET_COUNT}: {item['name']}")
         

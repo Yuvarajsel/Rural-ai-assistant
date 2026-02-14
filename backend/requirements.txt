@@ -9,3 +9,6 @@ sentence-transformers
 qdrant-client
 pymupdf
 langchain
+requests
+beautifulsoup4
+
