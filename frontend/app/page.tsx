@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Stethoscope, Activity, FileText, ChevronRight } from "lucide-react";
+import { Stethoscope, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import LiveBackground from "@/components/LiveBackground";
-import { cn } from "@/lib/utils";
+
 
 export default function Home() {
   return (

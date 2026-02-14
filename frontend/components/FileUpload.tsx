@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, FileText, CheckCircle, X } from "lucide-react";
+import { Upload, FileText, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FileUploadProps {

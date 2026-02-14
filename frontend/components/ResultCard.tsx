@@ -1,7 +1,7 @@
 "use client";
 import { AlertTriangle, CheckCircle, Info, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+
 
 interface ResultCardProps {
     result: {

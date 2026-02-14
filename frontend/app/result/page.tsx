@@ -7,9 +7,21 @@ import ResultCard from "@/components/ResultCard";
 import LiveBackground from "@/components/LiveBackground";
 import { motion } from "framer-motion";
 
+interface AnalysisResult {
+    probable_condition: string;
+    disease_stage: string;
+    risk_level: string;
+    detailed_explanation: string;
+    treatment_guidance: string;
+    medications: string[];
+    patient_dos: string[];
+    patient_donts: string[];
+    referral_recommendation: string;
+}
+
 export default function ResultPage() {
     const router = useRouter();
-    const [result, setResult] = useState<any>(null);
+    const [result, setResult] = useState<AnalysisResult | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {

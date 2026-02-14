@@ -2,6 +2,54 @@
 
 import { useEffect, useRef } from "react";
 
+class Particle {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    size: number;
+    mouseDistance = 200;
+
+    constructor(width: number, height: number) {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 0.5;
+        this.vy = (Math.random() - 0.5) * 0.5;
+        this.size = Math.random() * 2 + 1;
+    }
+
+    update(width: number, height: number, mouse: { x: number; y: number }) {
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // Bounce off edges
+        if (this.x < 0 || this.x > width) this.vx *= -1;
+        if (this.y < 0 || this.y > height) this.vy *= -1;
+
+        // Mouse interaction
+        const dx = mouse.x - this.x;
+        const dy = mouse.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < this.mouseDistance) {
+            const forceDirectionX = dx / distance;
+            const forceDirectionY = dy / distance;
+            const force = (this.mouseDistance - distance) / this.mouseDistance;
+            const directionX = forceDirectionX * force * 0.05;
+            const directionY = forceDirectionY * force * 0.05;
+            this.vx += directionX;
+            this.vy += directionY;
+        }
+    }
+
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
 export default function LiveBackground() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -14,67 +62,18 @@ export default function LiveBackground() {
 
         let width = canvas.width = window.innerWidth;
         let height = canvas.height = window.innerHeight;
-        let particles: Particle[] = [];
+        const particles: Particle[] = [];
 
         // Configuration
         const particleCount = 60;
         const connectionDistance = 150;
-        const mouseDistance = 200;
-
-        class Particle {
-            x: number;
-            y: number;
-            vx: number;
-            vy: number;
-            size: number;
-
-            constructor() {
-                this.x = Math.random() * width;
-                this.y = Math.random() * height;
-                this.vx = (Math.random() - 0.5) * 0.5;
-                this.vy = (Math.random() - 0.5) * 0.5;
-                this.size = Math.random() * 2 + 1;
-            }
-
-            update(mouse: { x: number; y: number }) {
-                this.x += this.vx;
-                this.y += this.vy;
-
-                // Bounce off edges
-                if (this.x < 0 || this.x > width) this.vx *= -1;
-                if (this.y < 0 || this.y > height) this.vy *= -1;
-
-                // Mouse interaction
-                const dx = mouse.x - this.x;
-                const dy = mouse.y - this.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance < mouseDistance) {
-                    const forceDirectionX = dx / distance;
-                    const forceDirectionY = dy / distance;
-                    const force = (mouseDistance - distance) / mouseDistance;
-                    const directionX = forceDirectionX * force * 0.05;
-                    const directionY = forceDirectionY * force * 0.05;
-                    this.vx += directionX;
-                    this.vy += directionY;
-                }
-            }
-
-            draw() {
-                if (!ctx) return;
-                ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
 
         // Initialize particles
         for (let i = 0; i < particleCount; i++) {
-            particles.push(new Particle());
+            particles.push(new Particle(width, height));
         }
 
-        let mouse = { x: -1000, y: -1000 };
+        const mouse = { x: -1000, y: -1000 };
 
         const handleMouseMove = (e: MouseEvent) => {
             mouse.x = e.clientX;
@@ -94,8 +93,8 @@ export default function LiveBackground() {
 
             // Update and draw particles
             particles.forEach(p => {
-                p.update(mouse);
-                p.draw();
+                p.update(width, height, mouse);
+                p.draw(ctx);
             });
 
             // Draw connections

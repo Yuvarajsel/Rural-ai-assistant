@@ -10,7 +10,7 @@ import io
 async def process_image(file: UploadFile):
     contents = await file.read()
     image = Image.open(io.BytesIO(contents)).convert("RGB")
-    
+
     # Preprocessing
     preprocess = transforms.Compose([
         transforms.Resize(256),

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, Upload, FileText, Search, ChevronRight, AlertCircle } from "lucide-react";
+import { Activity, Upload, FileText, ChevronRight, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import FileUpload from "@/components/FileUpload";
 import Header from "@/components/Header";
@@ -25,7 +25,7 @@ export default function Browse() {
         try {
             let endpoint = "";
             let body;
-            let method = "POST";
+            const method = "POST";
             const baseUrl = "http://localhost:8000";
 
             if (activeTab === "image") {
@@ -59,8 +59,9 @@ export default function Browse() {
             sessionStorage.setItem("analysisResult", JSON.stringify(data));
             router.push("/result");
 
-        } catch (err: any) {
-            setError(err.message || "An error occurred during analysis.");
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : "An error occurred during analysis.";
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }

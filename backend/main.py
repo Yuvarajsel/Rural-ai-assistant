@@ -7,7 +7,8 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
-import web_bridge # Custom Live Search Module
+from . import web_bridge # Custom Live Search Module
+from .pdf_processor import extract_text_from_pdf
 
 app = FastAPI(
     title="Rural Clinical AI Assistant API",
@@ -87,7 +88,9 @@ def generate_dynamic_response(query: str, match_data: dict, input_type: str):
     if match_data.get("stage") == "Live Web Result":
         final_explanation = f"LIVE WEB RESULT: {match_data['explanation']}"
     else:
-        final_explanation = random.choice(explanation_templates) + " " + match_data["explanation"] + nuance
+        final_explanation = (
+            random.choice(explanation_templates) + " " + match_data["explanation"] + nuance
+        )
 
     # 2. Dynamic Risk Assessment
     risk_level = "Moderate Risk"
@@ -97,7 +100,8 @@ def generate_dynamic_response(query: str, match_data: dict, input_type: str):
         risk_level = "Low to Moderate Risk"
         
     # Override if condition is effectively dangerous
-    if "Malaria" in condition or "Pneumonia" in condition or "TB" in condition or "Cancer" in condition:
+    if ("Malaria" in condition or "Pneumonia" in condition or
+            "TB" in condition or "Cancer" in condition):
         if risk_level != "High Risk / Emergency":
             risk_level = "Moderate to High Risk"
 
@@ -169,14 +173,47 @@ def find_best_match(query: str):
 
     return best_match, max_score
 
+def find_condition_in_text(text: str):
+    """
+    Scans a large text block for known conditions.
+    Returns the best matching condition entry or None.
+    """
+    text = text.lower()
+    best_match = None
+    max_count = 0
+    
+    for entry in MEDICAL_DATA:
+        condition = entry["condition"]
+        # Efficiency: Check if condition is in text
+        if condition.lower() in text:
+            # Count occurrences to find most relevant topic
+            count = text.count(condition.lower())
+            
+            # Heuristic: Prefer more frequent mentions
+            if count > max_count:
+                max_count = count
+                best_match = entry
+            elif count == max_count and count > 0:
+                # Tie-breaker: Prefer longer/more specific names
+                # e.g. "Type 2 Diabetes" over "Diabetes" if both appear once (unlikely but possible)
+                if best_match and len(condition) > len(best_match["condition"]):
+                    best_match = entry
+                elif not best_match:
+                     best_match = entry
+                     
+    return best_match
+
 # --- Fallback Response ---
 UNKNOWN_RESPONSE = {
     "risk_level": "Unknown / Assessment Required",
     "probable_condition": "Unidentified Condition",
     "disease_stage": "N/A",
-    "detailed_explanation": "The reported symptoms do not match our database or live web search. Please visit the closest medical facility.",
+    "detailed_explanation": (
+        "The reported symptoms do not match our database or live web search. "
+        "Please visit the closest medical facility."
+    ),
     "treatment_guidance": "Consult a doctor immediately for proper diagnosis.",
-    "medications": ["Do not self-medicate"],
+
     "patient_dos": ["Monitor symptoms", "Visit nearest clinic"],
     "patient_donts": ["Do not ignore worsening symptoms"],
     "referral_recommendation": "Refer to General Physician (GP) for diagnosis."
@@ -217,10 +254,29 @@ async def analyze_report(file: UploadFile = File(...)):
     filename = file.filename.lower()
     query = os.path.splitext(filename)[0]
     
-    match, score = find_best_match(query)
+    # STRATEGY: Prioritize Content Analysis over Filename
+    match = None
     
-    if not match and "blood" in query:
-         match, _ = find_best_match("anemia")
+    # 1. Try to read and analyze content first (Most Accurate)
+    print(f"Analyzing PDF content for '{filename}'...")
+    try:
+        validation_text = await extract_text_from_pdf(file)
+        if validation_text:
+            text_match = find_condition_in_text(validation_text)
+            if text_match:
+                 match = text_match
+                 query = match["condition"] # Use found condition as query context
+                 print(f"Found condition in PDF text: {query}")
+    except Exception as e:
+        print(f"Error during PDF text analysis: {e}")
+
+    # 2. Fallback to filename if content yield no match
+    if not match:
+        print("PDF content yield no match. Falling back to filename...")
+        match, score = find_best_match(query)
+        
+        if not match and "blood" in query:
+             match, _ = find_best_match("anemia")
     
     time.sleep(2)
     

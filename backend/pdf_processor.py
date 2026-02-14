@@ -12,7 +12,7 @@ async def extract_text_from_pdf(file: UploadFile) -> str:
         for page in doc:
             text += page.get_text()
         return text
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-exception-caught
         print(f"Error extracting PDF text: {e}")
         return ""
 
